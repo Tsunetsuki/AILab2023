@@ -173,6 +173,12 @@ def build_model():
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
+# Include the epoch in the file name (uses `str.format`)
+
+# Saving weights: https://medium.com/analytics-vidhya/tensorflow-2-0-save-and-restore-models-4708ed3f0d8
+checkpoint_path = "bert_training/cp-{epoch:04d}.ckpt"
+checkpoint_dir = os.path.dirname(checkpoint_path)
+
 
 if TRAIN:
     # creating a model under the TPUStrategy will place the model in a replicated (same weights on each of the cores)
@@ -182,6 +188,12 @@ if TRAIN:
         model = build_model()
 
         callback = tf.keras.callbacks.EarlyStopping(monitor='loss',mode='min', patience=3)
+        # Create a callback that saves the model's weights every 5 epochs
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_path, 
+            verbose=1, 
+            save_weights_only=True,
+            period=5)# previously, there was no period defined 
 
         # Compile the model
         model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),
@@ -199,9 +211,12 @@ if TRAIN:
         history = model.fit((sequences,masks),labels,
                             batch_size=12,
                             epochs=10,
-                            callbacks=[callback,])
+                            callbacks=[callback,cp_callback])
+        # validation_data=(x_val, y_val),
 
         model.save_weights(f'model.h5')
+    # Display the model's architecture
+    # model.summary()
 
 if not TRAIN:
     model = build_model()
