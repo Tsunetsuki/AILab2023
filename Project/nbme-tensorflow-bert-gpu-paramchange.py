@@ -45,7 +45,11 @@ os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 tf.config.optimizer.set_experimental_options({"auto_mixed_precision": True})
 print('Mixed precision enabled')
 
-TRAIN = False
+# fine-tunes all layers with 10 epochs and low learning rate
+TRAIN = True
+# fine tunes only last layer for efficiency, TODO
+# https://stackoverflow.com/questions/56028464/fine-tuning-last-x-layers-of-bert
+LAST_ONLY = False
 
 features = pd.read_csv("./data/features.csv")
 patient_notes = pd.read_csv("./data/patient_notes.csv")
