@@ -1,0 +1,127 @@
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+feature_text max(lengths): 30
+max_len: 458
+max_len: 458
+========== fold: 0 training ==========
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+pn_history max(lengths): 425
+feature_text max(lengths): 30
+max_len: 458
+========== fold: 0 training ==========
+Epoch 1 - avg_train_loss: 0.0960  avg_val_loss: 0.0710  time: 7451s
+Epoch 1 - Score: 0.0000
+Epoch 2 - avg_train_loss: 0.0638  avg_val_loss: 0.0584  time: 19447s
+Epoch 2 - Score: 0.0000
