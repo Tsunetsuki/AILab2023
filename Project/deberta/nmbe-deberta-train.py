@@ -15,7 +15,7 @@
 # ====================================================
 import os
 
-root = '/Users/shannon/Library/CloudStorage/OneDrive-國立臺灣科技大學/NTUST/Germany/HKA/01_AI/Code/Mine/project'
+root = 'C:\HKA\AILab2023\Project\deberta'
 OUTPUT_DIR = root + '/'
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -133,8 +133,8 @@ from torch.optim import SGD, Adam, AdamW
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
-os.system('pip uninstall -y transformers')
-os.system('python -m pip install --no-index --find-links=/Users/shannon/Library/CloudStorage/OneDrive-國立臺灣科技大學/NTUST/Germany/HKA/01_AI/Code/Mine/project/input/nbme-pip-wheels transformers')
+#os.system('pip uninstall -y transformers')
+#os.system('python -m pip install --no-index --find-links=C:\HKA\AILab2023\Project\deberta\input\\nbme-pip-wheels transformers')
 import tokenizers
 import transformers
 
