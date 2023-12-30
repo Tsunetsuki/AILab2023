@@ -65,10 +65,10 @@ class CFG:
     batch_scheduler=True
     num_cycles=0.5
     num_warmup_steps=0
-    epochs=5
-    encoder_lr=2e-5
+    epochs=10
+    encoder_lr=2e-6
     decoder_lr=2e-5
-    min_lr=1e-6
+    min_lr=1e-8
     eps=1e-6
     betas=(0.9, 0.999)
     batch_size=12
@@ -195,8 +195,8 @@ def spans_to_binary(spans, length=None):
 
 
 def span_micro_f1(preds, truths):
-    print('span_micro preds', preds)
-    print('span_micro truths', truths)
+    #print('span_micro preds', preds)
+    #print('span_micro truths', truths)
     """
     Micro f1 on spans.
 
@@ -254,8 +254,8 @@ def get_char_probs(texts, predictions, tokenizer):
             results[i][start:end] = pred
     return results
 
-
-def get_results(char_probs, th=0.5):
+# th = 0.5
+def get_results(char_probs, th=0.0225):
     results = []
     for char_prob in char_probs:
         result = np.where(char_prob >= th)[0] + 1
@@ -286,9 +286,9 @@ def get_predictions(results):
 # Utils
 # ====================================================
 def get_score(y_true, y_pred):
-    print('inside score true: ', y_true)
-    print('inside score pred: ', y_pred)
-    score = span_micro_f1(y_true, y_pred)
+    #print('inside score true: ', y_true)
+    #print('inside score pred: ', y_pred)
+    score = span_micro_f1(y_pred, y_true)
     return score
 
 
@@ -785,7 +785,7 @@ def valid_fn(valid_loader, model, criterion, device):
                         remain=timeSince(start, float(step+1)/len(valid_loader))))
         
     predictions = np.concatenate(preds)
-    print('concat_preds: ', predictions)
+    #print('concat_preds: ', predictions)
     return losses.avg, predictions
 
 
@@ -880,7 +880,9 @@ def train_loop(folds, fold):
     # ====================================================
     # loop
     # ====================================================
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # default reduction is none
+    criterion = nn.BCEWithLogitsLoss(reduction='none')
+    # criterion = nn.CrossEntropyLoss
     
     best_score = 0.
 
@@ -889,8 +891,8 @@ def train_loop(folds, fold):
         start_time = time.time()
 
         # train
-        # avg_loss = train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, device)
-        avg_loss = 0.0
+        avg_loss = train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, device)
+        # avg_loss = 0.0
 
         # eval
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device)
@@ -900,6 +902,7 @@ def train_loop(folds, fold):
         char_probs = get_char_probs(valid_texts, predictions, CFG.tokenizer)
         results = get_results(char_probs, th=0.5)
         preds = get_predictions(results)
+        # ERROR preds all empty
         score = get_score(valid_labels, preds)
         # these have the same format
         # print('valid labels: ', valid_labels)
@@ -908,7 +911,7 @@ def train_loop(folds, fold):
         elapsed = time.time() - start_time
 
         LOGGER.info(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  avg_val_loss: {avg_val_loss:.4f}  time: {elapsed:.0f}s')
-        LOGGER.info(f'Epoch {epoch+1} - Score: {score:.4f}')
+        LOGGER.info(f'Epoch {epoch+1} - Score: {score:.6f}')
         if CFG.wandb:
             wandb.log({f"[fold{fold}] epoch": epoch+1, 
                        f"[fold{fold}] avg_train_loss": avg_loss, 
@@ -917,7 +920,7 @@ def train_loop(folds, fold):
         
         if best_score < score:
             best_score = score
-            LOGGER.info(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
+            LOGGER.info(f'Epoch {epoch+1} - Save Best Score: {best_score:.6f} Model')
             torch.save({'model': model.state_dict(),
                         'predictions': predictions},
                         OUTPUT_DIR+f"{CFG.model.replace('/', '-')}_fold{fold}_best.pth")
