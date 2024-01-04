@@ -65,7 +65,7 @@ class CFG:
     batch_scheduler=True
     num_cycles=0.5
     num_warmup_steps=0
-    epochs=10
+    epochs=5
     encoder_lr=2e-5
     decoder_lr=2e-5
     min_lr=1e-6
@@ -625,6 +625,11 @@ class CustomModel(nn.Module):
             self.model = AutoModel.from_pretrained(cfg.model, config=self.config)
         else:
             self.model = AutoModel(self.config)
+        for name, param in self.model.named_parameters():
+            print(name)
+            if '.10' not in name and '.11' not in name and '.rel_embeddings': # last 2 internal deberta layers, includes attention intermediate and output
+                print('--- grad false')
+                #param.requires_grad = False
         self.fc_dropout = nn.Dropout(cfg.fc_dropout)
         self.fc = nn.Linear(self.config.hidden_size, 1)
         self._init_weights(self.fc)
