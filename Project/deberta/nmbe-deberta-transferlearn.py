@@ -62,7 +62,7 @@ class CFG:
     batch_scheduler=True
     num_cycles=0.5
     num_warmup_steps=0
-    epochs=5
+    epochs=10
     encoder_lr=2e-5
     decoder_lr=2e-5
     min_lr=1e-6
@@ -129,7 +129,7 @@ from torch.optim import SGD, Adam, AdamW
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
-os.system('pip uninstall -y transformers')
+# os.system('pip uninstall -y transformers')
 os.system('python -m pip install --no-index --find-links=C:\HKA\AILab2023\Project\deberta/input/nbme-pip-wheels transformers')
 import tokenizers
 import transformers
@@ -622,6 +622,11 @@ class CustomModel(nn.Module):
             param.requires_grad = False
         self.fc_dropout = nn.Dropout(cfg.fc_dropout)
         # TODO: only train this layer
+        for name, param in self.model.named_parameters():
+            print(name)
+            if '.10' not in name and '.11' not in name and '.rel_embeddings': # last 2 internal deberta layers, includes attention intermediate and output
+                print('--- grad false')
+                param.requires_grad = False
         self.fc = nn.Linear(self.config.hidden_size, 1)
         self._init_weights(self.fc)
         
