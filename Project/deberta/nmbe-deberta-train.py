@@ -1,13 +1,37 @@
 # %% [markdown]
-# # About this notebook
-# - Deberta-base starter code
-# - pip wheels is [here](https://www.kaggle.com/yasufuminakama/nbme-pip-wheels)
-# - Inference notebook is [here](https://www.kaggle.com/yasufuminakama/nbme-deberta-base-baseline-inference)
+# # Before you start, the env setup 
+# 1. use conda to create a new env
+# ```bash
+#     conda create -n nmbe python=3.7
+#     conda activate nmbe
+# ```
 # 
-# If this notebook is helpful, feel free to upvote :)
+# 2. install the following packages
+# ```bash
+#     pip install torch==1.10.0
+#     pip install sacremoses==0.0.41
+#     pip install transformers
+# ```
+# ```bash if using cuda
+#     pip install torch==1.10.0.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
+#     pip install sacremoses==0.0.41
+#     pip install transformers
+# ```
 
 # %% [markdown]
-# # Directory settings
+#  # About this notebook
+#  - Deberta-base starter code
+#  - pip wheels is [here](https://www.kaggle.com/yasufuminakama/nbme-pip-wheels)
+#  - Inference notebook is [here](https://www.kaggle.com/yasufuminakama/nbme-deberta-base-baseline-inference)
+# 
+#  If this notebook is helpful, feel free to upvote :)
+# 
+
+# %% [markdown]
+# Test data is 20%, one of five folds for each 10-epoch long run
+
+# %% [markdown]
+#  # Directory settings
 
 # %%
 # ====================================================
@@ -20,18 +44,19 @@ OUTPUT_DIR = root + '/'
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
+
 # %% [markdown]
-# # CFG
+#  # CFG
 
 # %%
 # ====================================================
-# CFG
+# CFG (Classifier Free Guidance?)
 # ====================================================
 class CFG:
     wandb=False
     competition='NBME'
     _wandb_kernel='nakama'
-    debug=True # turn on for fast debug run
+    debug=False
     apex=True
     print_freq=100
     num_workers=4
@@ -40,7 +65,7 @@ class CFG:
     batch_scheduler=True
     num_cycles=0.5
     num_warmup_steps=0
-    epochs=5
+    epochs=10
     encoder_lr=2e-5
     decoder_lr=2e-5
     min_lr=1e-6
@@ -54,6 +79,7 @@ class CFG:
     max_grad_norm=1000
     seed=42
     n_fold=5
+    # possible to simply delete folds that are already trained
     trn_fold=[0, 1, 2, 3, 4]
     train=True
     
@@ -61,48 +87,21 @@ if CFG.debug:
     CFG.epochs = 2
     CFG.trn_fold = [0]
 
-# %%
-# ====================================================
-# wandb
-# ====================================================
-if CFG.wandb:
-    
-    import wandb
-
-    try:
-        from kaggle_secrets import UserSecretsClient
-        user_secrets = UserSecretsClient()
-        secret_value_0 = user_secrets.get_secret("wandb_api")
-        wandb.login(key=secret_value_0)
-        anony = None
-    except:
-        anony = "must"
-        print('If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
-
-
-    def class2dict(f):
-        return dict((name, getattr(f, name)) for name in dir(f) if not name.startswith('__'))
-
-    run = wandb.init(project='NBME-Public', 
-                     name=CFG.model,
-                     config=class2dict(CFG),
-                     group=CFG.model,
-                     job_type="train",
-                     anonymous=anony)
 
 # %% [markdown]
-# # Library
+#  # Library
 
+# %%
+# ====================================================
+# Library
+# ====================================================
 import ast
 import copy
 import gc
 import itertools
 import json
 import math
-# %%
-# ====================================================
-# Library
-# ====================================================
+
 import os
 import pickle
 import random
@@ -133,8 +132,8 @@ from torch.optim import SGD, Adam, AdamW
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
-#os.system('pip uninstall -y transformers')
-#os.system('python -m pip install --no-index --find-links=C:\HKA\AILab2023\Project\deberta\input\\nbme-pip-wheels transformers')
+# os.system('pip uninstall -y transformers')
+os.system('python -m pip install --no-index --find-links=C:\HKA\AILab2023\Project\deberta/input/nbme-pip-wheels transformers')
 import tokenizers
 import transformers
 
@@ -144,13 +143,20 @@ from transformers import (AutoConfig, AutoModel, AutoTokenizer,
                           get_cosine_schedule_with_warmup,
                           get_linear_schedule_with_warmup)
 
-# %env TOKENIZERS_PARALLELISM=true
+#%env TOKENIZERS_PARALLELISM=true
 
-# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-device = torch.device("cpu")
+device = "cpu"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
+
+
+# %%
+# incompatible models lead to NaN gradients, this is the case for CUDA version of this model with 0 workers in DataLoaders
+# because of convergence issues, different batches might be skipped learning-wise
+use_scaler = False
 
 # %% [markdown]
-# # Helper functions for scoring
+#  # Helper functions for scoring
 
 # %%
 # From https://www.kaggle.com/theoviel/evaluation-metric-folds-baseline
@@ -190,6 +196,8 @@ def spans_to_binary(spans, length=None):
 
 
 def span_micro_f1(preds, truths):
+    #print('span_micro preds', preds)
+    #print('span_micro truths', truths)
     """
     Micro f1 on spans.
 
@@ -207,8 +215,11 @@ def span_micro_f1(preds, truths):
             continue
         length = max(np.max(pred) if len(pred) else 0, np.max(truth) if len(truth) else 0)
         bin_preds.append(spans_to_binary(pred, length))
+        #print('bin preds: ', bin_preds)
         bin_truths.append(spans_to_binary(truth, length))
+        #print('bin truths: ', bin_truths)
     return micro_f1(bin_preds, bin_truths)
+
 
 # %%
 def create_labels_for_scoring(df):
@@ -267,8 +278,9 @@ def get_predictions(results):
         predictions.append(prediction)
     return predictions
 
+
 # %% [markdown]
-# # Utils
+#  # Utils
 
 # %%
 # ====================================================
@@ -297,13 +309,14 @@ def seed_everything(seed=42):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed) if torch.cuda.is_available() else torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     
 seed_everything(seed=42)
 
+
 # %% [markdown]
-# # Data Loading
+#  # Data Loading
 
 # %%
 # ====================================================
@@ -326,10 +339,12 @@ print(f"features.shape: {features.shape}")
 print(f"patient_notes.shape: {patient_notes.shape}")
 #display(patient_notes.head())
 
+
 # %%
 train = train.merge(features, on=['feature_num', 'case_num'], how='left')
 train = train.merge(patient_notes, on=['pn_num', 'case_num'], how='left')
 #display(train.head())
+
 
 # %%
 # incorrect annotation
@@ -459,12 +474,14 @@ train.loc[13845, 'location'] = ast.literal_eval('[["86 94;230 236"], ["86 94;237
 train.loc[14083, 'annotation'] = ast.literal_eval('[["headache generalized in her head"]]')
 train.loc[14083, 'location'] = ast.literal_eval('[["56 64;156 179"]]')
 
+
 # %%
 train['annotation_length'] = train['annotation'].apply(len)
 #display(train['annotation_length'].value_counts())
 
+
 # %% [markdown]
-# # CV split
+#  # CV split
 
 # %%
 # ====================================================
@@ -477,14 +494,16 @@ for n, (train_index, val_index) in enumerate(Fold.split(train, train['location']
 train['fold'] = train['fold'].astype(int) # validation data is len(train)/5 = 2860, each fold 1~5 have 2860 testing data and 11440 training data 
 # display(train.groupby('fold').size())
 
+
 # %%
 if CFG.debug:
     # display(train.groupby('fold').size())
     train = train.sample(n=1000, random_state=0).reset_index(drop=True)
     # display(train.groupby('fold').size())
 
+
 # %% [markdown]
-# # tokenizer
+#  # tokenizer
 
 # %%
 # ====================================================
@@ -494,8 +513,9 @@ tokenizer = AutoTokenizer.from_pretrained(CFG.model)
 tokenizer.save_pretrained(OUTPUT_DIR+'tokenizer/')
 CFG.tokenizer = tokenizer
 
+
 # %% [markdown]
-# # Dataset
+#  # Dataset
 
 # %%
 # ====================================================
@@ -519,6 +539,7 @@ for text_col in ['feature_text']:
 
 CFG.max_len = max(pn_history_lengths) + max(features_lengths) + 3 # cls 開始 & sep 病例結果 & sep 特徵結尾 
 LOGGER.info(f"max_len: {CFG.max_len}")
+
 
 # %%
 # ====================================================
@@ -584,8 +605,9 @@ class TrainDataset(Dataset):
                              self.locations[item])
         return inputs, label
 
+
 # %% [markdown]
-# # Model
+#  # Model
 
 # %%
 # ====================================================
@@ -630,8 +652,9 @@ class CustomModel(nn.Module):
         output = self.fc(self.fc_dropout(feature))
         return output
 
+
 # %% [markdown]
-# # Helpler functions
+#  # Helpler functions
 
 # %%
 # ====================================================
@@ -671,7 +694,9 @@ def timeSince(since, percent):
 
 def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, device):
     model.train()
-    # scaler = torch.cuda.amp.GradScaler(enabled=CFG.apex)
+    if use_scaler:
+        # standard growth factor: 2.0
+        scaler = torch.cuda.amp.GradScaler(enabled=CFG.apex)  
     losses = AverageMeter() # calculate the average loss of each batch, 
     start = end = time.time()
     global_step = 0
@@ -680,9 +705,11 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
             inputs[k] = v.to(device)
         labels = labels.to(device)
         batch_size = labels.size(0)
-        # with torch.cuda.amp.autocast(enabled=CFG.apex):
-
-        y_preds = model(inputs) # [12, 458, 1]; batch is 12, max_len is 458 
+        if torch.cuda.is_available():
+            with torch.cuda.amp.autocast(enabled=CFG.apex):
+                y_preds = model(inputs) # [12, 458, 1]; batch is 12, max_len is 458 
+        else:
+            y_preds = model(inputs)
         
         loss = criterion(y_preds.view(-1, 1), labels.view(-1, 1))
         loss = torch.masked_select(loss, labels.view(-1, 1) != -1).mean() # choose the loss of label != -1, and calculate the mean of all none -1 loss
@@ -692,7 +719,7 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
         
         losses.update(loss.item(), batch_size) # loss=0.1, batch_size=12, losses.avg = (0.1*12 + 0.2*12 ...)/(12*num_batch)
 
-        loss.backward() # remove the scaler, bsc I don't have cuda: scaler.scale(loss).backward()
+        loss.backward()
         
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), CFG.max_grad_norm) # constrain the gradient to be less than max_grad_norm, to avoid gradient explosion
         
@@ -700,16 +727,16 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
         optimizer.zero_grad()
         global_step += 1 # global_step is including the epoch
         
-        # if (step + 1) % CFG.gradient_accumulation_steps == 0:
-        #     scaler.step(optimizer)
-        #     scaler.update()
-        #     optimizer.zero_grad()
-        #     global_step += 1
+        if (step + 1) % CFG.gradient_accumulation_steps == 0 and use_scaler :
+             scaler.step(optimizer)
+             scaler.update()
+             optimizer.zero_grad()
+             global_step += 1
         if CFG.batch_scheduler:
             scheduler.step()
             
         end = time.time()
-        # if step % CFG.print_freq == 0 or step == (len(train_loader)-1):
+        #if step % CFG.print_freq == 0 or step == (len(train_loader)-1) and torch.cuda.is_available():
         print('Epoch: [{0}][{1}/{2}] '
                 'Elapsed {remain:s} '
                 'Loss: {loss.val:.4f}({loss.avg:.4f}) '
@@ -770,6 +797,7 @@ def inference_fn(test_loader, model, device):
     predictions = np.concatenate(preds)
     return predictions
 
+
 # %%
 # ====================================================
 # train loop
@@ -785,18 +813,20 @@ def train_loop(folds, fold):
     valid_folds = folds[folds['fold'] == fold].reset_index(drop=True)
     valid_texts = valid_folds['pn_history'].values
     valid_labels = create_labels_for_scoring(valid_folds)
+    # print(valid_labels)
     
     train_dataset = TrainDataset(CFG, train_folds)
     valid_dataset = TrainDataset(CFG, valid_folds)
 
+    # num_workers set to 0 because of an error in this specific torch version for windows
     train_loader = DataLoader(train_dataset,
                               batch_size=CFG.batch_size,
                               shuffle=True,
-                              num_workers=CFG.num_workers, pin_memory=True, drop_last=True)
+                              num_workers=0, pin_memory=True, drop_last=True)
     valid_loader = DataLoader(valid_dataset,
                               batch_size=CFG.batch_size,
                               shuffle=False,
-                              num_workers=CFG.num_workers, pin_memory=True, drop_last=False)
+                              num_workers=0, pin_memory=True, drop_last=False)
 
     # ====================================================
     # model & optimizer
@@ -854,6 +884,7 @@ def train_loop(folds, fold):
 
         # train
         avg_loss = train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, device)
+        # avg_loss = 0.0
 
         # eval
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device)
@@ -864,6 +895,7 @@ def train_loop(folds, fold):
         results = get_results(char_probs, th=0.5)
         preds = get_predictions(results)
         score = get_score(valid_labels, preds)
+        print('valid labels, preds', valid_labels, preds)
 
         elapsed = time.time() - start_time
 
@@ -886,10 +918,11 @@ def train_loop(folds, fold):
                              map_location=torch.device('cpu'))['predictions']
     valid_folds[[i for i in range(CFG.max_len)]] = predictions
 
-    torch.empty_cache()
+    torch.cuda.empty_cache() if torch.cuda.is_available() else torch.empty_cache()
     gc.collect()
     
     return valid_folds
+
 
 # %%
 if __name__ == '__main__':
@@ -918,5 +951,13 @@ if __name__ == '__main__':
         
     if CFG.wandb:
         wandb.finish()
+
+    # no training results: 
+#Epoch 1 - avg_train_loss: 0.0000  avg_val_loss: 0.7684  time: 130s
+#Epoch 1 - Score: 0.0332
+#Epoch 1 - Save Best Score: 0.0332 Model
+
+
+
 
 
