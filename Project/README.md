@@ -1,4 +1,4 @@
-The relevent models can be found in the "deberta" and  folders in following files:
+The relevent models can be found in the following files:
 - [lstm-with-bert.py](lstm-with-bert.py)
 - deberta/
     - [nmbe-bert-train.ipynb](deberta/nmbe-bert-train.ipynb) / [nmbe-bert-train.py](deberta/nmbe-bert-train.py)
