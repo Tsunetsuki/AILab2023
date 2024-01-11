@@ -1,39 +1,3 @@
-# %% [markdown]
-# # Before you start, the env setup 
-# 1. use conda to create a new env
-# ```bash
-#     conda create -n nmbe python=3.7
-#     conda activate nmbe
-# ```
-# 
-# 2. install the following packages
-# ```bash
-#     pip install torch==1.10.0
-#     pip install sacremoses==0.0.41
-#     pip install transformers
-# ```
-# ```bash if using cuda
-#     pip install torch==1.10.0.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
-#     pip install sacremoses==0.0.41
-#     pip install transformers
-# ```
-
-# %% [markdown]
-#  # About this notebook
-#  - Deberta-base starter code
-#  - pip wheels is [here](https://www.kaggle.com/yasufuminakama/nbme-pip-wheels)
-#  - Inference notebook is [here](https://www.kaggle.com/yasufuminakama/nbme-deberta-base-baseline-inference)
-# 
-#  If this notebook is helpful, feel free to upvote :)
-# 
-
-# %% [markdown]
-#  # Directory settings
-
-# %%
-# ====================================================
-# Directory settings
-# ====================================================
 import os
 
 root = 'C:\HKA\AILab2023\Project\deberta'
