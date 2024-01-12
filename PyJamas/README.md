@@ -35,8 +35,7 @@ Other Python and Jupyter files were used for preparation steps like data explora
 │   ├── nmbe-deberta-transferlearn.ipynb
 │   └── nmbe-deberta-transferlearn.py
 ├── lstm # all lstm related files 
-│   ├── lstm-based-on-lab-6.ipynb
-│   └── lstm_bert_tokenizer.ipynb
+│   ├── lstm-with-bert.py
 ├── README.md
 ├── data-view.ipynb # data exploration and visualization 
 └── resources.ipynb # the detail of the resources used in this project 
